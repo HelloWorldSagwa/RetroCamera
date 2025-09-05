@@ -415,13 +415,17 @@ class FilteredCameraViewController: UIViewController {
         let dateString = formatter.string(from: Date())
         
         // Create the text image with 7-segment LCD style
-        // Use DSEG7Classic-Bold if available, otherwise use system monospaced
         let font: UIFont
-        if let dsegFont = UIFont(name: "DSEG7Classic-Bold", size: 32) {
+        // Try different font name variations
+        if let dsegFont = UIFont(name: "DSEG7Classic-Bold", size: 20) {
+            font = dsegFont
+        } else if let dsegFont = UIFont(name: "DSEG7 Classic-Bold", size: 20) {
+            font = dsegFont
+        } else if let dsegFont = UIFont(name: "DSEG7 Classic", size: 20) {
             font = dsegFont
         } else {
             // Fallback to system monospaced digital font
-            font = UIFont.monospacedDigitSystemFont(ofSize: 32, weight: .bold)
+            font = UIFont.monospacedDigitSystemFont(ofSize: 20, weight: .medium)
         }
         
         let attributes: [NSAttributedString.Key: Any] = [
@@ -431,24 +435,17 @@ class FilteredCameraViewController: UIViewController {
         ]
         
         let textSize = dateString.size(withAttributes: attributes)
+        
+        // Make sure we have a valid size
+        guard textSize.width > 0 && textSize.height > 0 else {
+            return inputImage
+        }
+        
         let renderer = UIGraphicsImageRenderer(size: textSize)
         
-        let textImage = renderer.image { context in
-            // Draw dark background for LCD effect
-            let darkBackground = UIColor.black.withAlphaComponent(0.3)
-            darkBackground.setFill()
-            context.fill(CGRect(origin: .zero, size: textSize))
-            
-            // Add glow effect for LCD backlight
-            let shadow = NSShadow()
-            shadow.shadowColor = UIColor(red: 1.0, green: 0.2, blue: 0.0, alpha: 0.6)
-            shadow.shadowOffset = CGSize(width: 0, height: 0)
-            shadow.shadowBlurRadius = 3
-            
-            var glowAttributes = attributes
-            glowAttributes[.shadow] = shadow
-            
-            dateString.draw(at: .zero, withAttributes: glowAttributes)
+        let textImage = renderer.image { context in            
+            // Simply draw the date string
+            dateString.draw(at: .zero, withAttributes: attributes)
         }
         
         guard let textCIImage = CIImage(image: textImage) else {
@@ -456,9 +453,10 @@ class FilteredCameraViewController: UIViewController {
         }
         
         // Position the date stamp in bottom right corner
+        // In Core Image, origin (0,0) is at bottom-left
         let imageExtent = inputImage.extent
         let xPosition = imageExtent.width - textSize.width - 20
-        let yPosition: CGFloat = 20
+        let yPosition: CGFloat = 20  // 20 points from bottom
         
         // Transform to position the text
         let transform = CGAffineTransform(translationX: xPosition, y: yPosition)
