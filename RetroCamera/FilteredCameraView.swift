@@ -409,31 +409,46 @@ class FilteredCameraViewController: UIViewController {
     }
     
     private func applyDateStamp(to inputImage: CIImage) -> CIImage {
-        // Create date string in vintage format
+        // Create date string in vintage format (7-segment LCD style)
         let formatter = DateFormatter()
         formatter.dateFormat = "''yy MM dd"  // Format: '95 12 25
         let dateString = formatter.string(from: Date())
         
-        // Create the text image
+        // Create the text image with 7-segment LCD style
+        // Use DSEG7Classic-Bold if available, otherwise use system monospaced
+        let font: UIFont
+        if let dsegFont = UIFont(name: "DSEG7Classic-Bold", size: 32) {
+            font = dsegFont
+        } else {
+            // Fallback to system monospaced digital font
+            font = UIFont.monospacedDigitSystemFont(ofSize: 32, weight: .bold)
+        }
+        
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: UIFont(name: "Courier-Bold", size: 28) ?? UIFont.monospacedDigitSystemFont(ofSize: 28, weight: .bold),
-            .foregroundColor: UIColor(red: 1.0, green: 0.4, blue: 0.0, alpha: 0.9) // Orange color
+            .font: font,
+            .foregroundColor: UIColor(red: 1.0, green: 0.35, blue: 0.0, alpha: 0.95), // Classic orange-red LCD color
+            .kern: 2.0 // Add spacing between characters for LCD look
         ]
         
         let textSize = dateString.size(withAttributes: attributes)
         let renderer = UIGraphicsImageRenderer(size: textSize)
         
         let textImage = renderer.image { context in
-            // Add shadow for depth
+            // Draw dark background for LCD effect
+            let darkBackground = UIColor.black.withAlphaComponent(0.3)
+            darkBackground.setFill()
+            context.fill(CGRect(origin: .zero, size: textSize))
+            
+            // Add glow effect for LCD backlight
             let shadow = NSShadow()
-            shadow.shadowColor = UIColor.black.withAlphaComponent(0.5)
-            shadow.shadowOffset = CGSize(width: 1, height: 1)
-            shadow.shadowBlurRadius = 2
+            shadow.shadowColor = UIColor(red: 1.0, green: 0.2, blue: 0.0, alpha: 0.6)
+            shadow.shadowOffset = CGSize(width: 0, height: 0)
+            shadow.shadowBlurRadius = 3
             
-            var shadowAttributes = attributes
-            shadowAttributes[.shadow] = shadow
+            var glowAttributes = attributes
+            glowAttributes[.shadow] = shadow
             
-            dateString.draw(at: .zero, withAttributes: shadowAttributes)
+            dateString.draw(at: .zero, withAttributes: glowAttributes)
         }
         
         guard let textCIImage = CIImage(image: textImage) else {
