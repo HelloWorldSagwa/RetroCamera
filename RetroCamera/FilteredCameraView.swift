@@ -2,21 +2,49 @@ import SwiftUI
 import AVFoundation
 import CoreImage
 import CoreImage.CIFilterBuiltins
+import Vision
+import Photos
 
 struct FilteredCameraView: UIViewControllerRepresentable {
     @Binding var selectedFilter: FilmFilter
     @Binding var grainIntensity: Double
+    @Binding var lightLeakIntensity: Double
+    @Binding var focusPosition: Double
+    @Binding var isManualFocus: Bool
+    @Binding var bokehIntensity: Double
+    @Binding var isSelectiveBokeh: Bool
+    @Binding var shouldCapturePhoto: Bool
+    @Binding var capturedImage: UIImage?
     
     func makeUIViewController(context: Context) -> FilteredCameraViewController {
         let controller = FilteredCameraViewController()
         controller.selectedFilter = selectedFilter
         controller.grainIntensity = Float(grainIntensity)
+        controller.lightLeakIntensity = Float(lightLeakIntensity)
+        controller.focusPosition = Float(focusPosition)
+        controller.isManualFocus = isManualFocus
+        controller.bokehIntensity = Float(bokehIntensity)
+        controller.isSelectiveBokeh = isSelectiveBokeh
+        controller.capturePhotoCompletion = { image in
+            capturedImage = image
+            shouldCapturePhoto = false
+        }
         return controller
     }
     
     func updateUIViewController(_ uiViewController: FilteredCameraViewController, context: Context) {
         uiViewController.selectedFilter = selectedFilter
         uiViewController.grainIntensity = Float(grainIntensity)
+        uiViewController.lightLeakIntensity = Float(lightLeakIntensity)
+        uiViewController.focusPosition = Float(focusPosition)
+        uiViewController.isManualFocus = isManualFocus
+        uiViewController.bokehIntensity = Float(bokehIntensity)
+        uiViewController.isSelectiveBokeh = isSelectiveBokeh
+        
+        if shouldCapturePhoto {
+            uiViewController.capturePhoto()
+            shouldCapturePhoto = false
+        }
     }
 }
 
@@ -45,6 +73,10 @@ class FilteredCameraViewController: UIViewController {
     private var filterView: UIImageView!
     private var currentVideoInput: AVCaptureDeviceInput?
     private var videoDevicePosition: AVCaptureDevice.Position = .back
+    private var cachedLightLeakImage: CIImage?
+    private var lastLightLeakGeneration: Date = Date()
+    private var previewLayer: AVCaptureVideoPreviewLayer?
+    private var focusIndicatorView: UIView?
     
     var selectedFilter: FilmFilter = .none {
         didSet {
@@ -57,6 +89,54 @@ class FilteredCameraViewController: UIViewController {
             print("Grain intensity changed to: \(grainIntensity)")
         }
     }
+    
+    var lightLeakIntensity: Float = 0.0 {
+        didSet {
+            print("Light leak intensity changed to: \(lightLeakIntensity)")
+        }
+    }
+    
+    var focusPosition: Float = 0.5 {
+        didSet {
+            if isManualFocus {
+                adjustFocus(to: focusPosition)
+            }
+        }
+    }
+    
+    var isManualFocus: Bool = false {
+        didSet {
+            if isManualFocus {
+                adjustFocus(to: focusPosition)
+            } else {
+                resetToAutoFocus()
+            }
+        }
+    }
+    
+    var bokehIntensity: Float = 0.0 {
+        didSet {
+            print("Bokeh intensity changed to: \(bokehIntensity)")
+        }
+    }
+    
+    var isSelectiveBokeh: Bool = true {
+        didSet {
+            print("Selective bokeh: \(isSelectiveBokeh)")
+        }
+    }
+    
+    // Store the last focus point for selective bokeh
+    private var lastFocusPoint: CGPoint = CGPoint(x: 0.5, y: 0.5)
+    
+    // Vision request for person segmentation
+    private var personSegmentationRequest: VNGeneratePersonSegmentationRequest?
+    private var lastPersonMask: CIImage?
+    
+    // Photo capture
+    private var photoOutput: AVCapturePhotoOutput?
+    private var lastProcessedImage: CIImage?
+    var capturePhotoCompletion: ((UIImage) -> Void)?
     
     enum SessionSetupResult {
         case success
@@ -77,9 +157,35 @@ class FilteredCameraViewController: UIViewController {
         filterView = UIImageView(frame: CGRect(x: 0, y: yOffset, width: screenWidth, height: cameraHeight))
         filterView.contentMode = .scaleAspectFill
         filterView.clipsToBounds = true
+        filterView.isUserInteractionEnabled = true
         view.addSubview(filterView)
         
+        // Create preview layer for coordinate conversion
+        previewLayer = AVCaptureVideoPreviewLayer(session: session)
+        previewLayer?.frame = filterView.bounds
+        previewLayer?.videoGravity = .resizeAspectFill
+        previewLayer?.isHidden = true  // We don't display it, just use for coordinate conversion
+        filterView.layer.addSublayer(previewLayer!)
+        
+        // Add tap gesture for focus
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTapToFocus(_:)))
+        filterView.addGestureRecognizer(tapGesture)
+        
+        // Create focus indicator view
+        focusIndicatorView = UIView(frame: CGRect(x: 0, y: 0, width: 80, height: 80))
+        focusIndicatorView?.layer.borderColor = UIColor.yellow.cgColor
+        focusIndicatorView?.layer.borderWidth = 2
+        focusIndicatorView?.layer.cornerRadius = 40
+        focusIndicatorView?.isHidden = true
+        focusIndicatorView?.alpha = 0
+        filterView.addSubview(focusIndicatorView!)
+        
         ciContext = CIContext(options: [.useSoftwareRenderer: false])
+        
+        // Setup Vision request for person segmentation (iOS 15+)
+        if #available(iOS 15.0, *) {
+            setupPersonSegmentation()
+        }
         
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
@@ -147,6 +253,150 @@ class FilteredCameraViewController: UIViewController {
         let cameraHeight = screenWidth * 4.0 / 3.0
         let yOffset = (view.bounds.height - cameraHeight) / 2.0
         filterView.frame = CGRect(x: 0, y: yOffset, width: screenWidth, height: cameraHeight)
+        previewLayer?.frame = filterView.bounds
+    }
+    
+    private func adjustFocus(to position: Float) {
+        guard let device = currentVideoInput?.device else { return }
+        
+        do {
+            try device.lockForConfiguration()
+            
+            if device.isFocusModeSupported(.locked) {
+                device.setFocusModeLocked(lensPosition: position) { _ in
+                    print("Focus adjusted to position: \(position)")
+                }
+            }
+            
+            device.unlockForConfiguration()
+        } catch {
+            print("Error adjusting focus: \(error)")
+        }
+    }
+    
+    private func resetToAutoFocus() {
+        guard let device = currentVideoInput?.device else { return }
+        
+        do {
+            try device.lockForConfiguration()
+            
+            if device.isFocusModeSupported(.continuousAutoFocus) {
+                device.focusMode = .continuousAutoFocus
+                print("Reset to auto focus")
+            } else if device.isFocusModeSupported(.autoFocus) {
+                device.focusMode = .autoFocus
+            }
+            
+            device.unlockForConfiguration()
+        } catch {
+            print("Error resetting focus: \(error)")
+        }
+    }
+    
+    @objc private func handleTapToFocus(_ gesture: UITapGestureRecognizer) {
+        let location = gesture.location(in: filterView)
+        
+        // Show focus indicator animation
+        showFocusIndicator(at: location)
+        
+        // Convert tap location to device coordinates
+        guard let previewLayer = previewLayer else { return }
+        let devicePoint = previewLayer.captureDevicePointConverted(fromLayerPoint: location)
+        
+        // Set focus and exposure at the tapped point
+        setFocusAndExposure(at: devicePoint)
+    }
+    
+    private func showFocusIndicator(at point: CGPoint) {
+        guard let indicator = focusIndicatorView else { return }
+        
+        // Position the indicator at tap location
+        indicator.center = point
+        indicator.transform = CGAffineTransform(scaleX: 1.5, y: 1.5)
+        indicator.alpha = 0
+        indicator.isHidden = false
+        
+        // Animate the focus indicator
+        UIView.animate(withDuration: 0.3, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.5, options: .curveEaseInOut, animations: {
+            indicator.transform = CGAffineTransform.identity
+            indicator.alpha = 1.0
+        }) { _ in
+            // Fade out after a delay
+            UIView.animate(withDuration: 0.2, delay: 0.5, options: .curveEaseOut, animations: {
+                indicator.alpha = 0
+            }) { _ in
+                indicator.isHidden = true
+            }
+        }
+    }
+    
+    @available(iOS 15.0, *)
+    private func setupPersonSegmentation() {
+        personSegmentationRequest = VNGeneratePersonSegmentationRequest()
+        personSegmentationRequest?.qualityLevel = .balanced  // Balance between quality and performance
+    }
+    
+    @available(iOS 15.0, *)
+    private func generatePersonMask(from pixelBuffer: CVPixelBuffer, completion: @escaping (CIImage?) -> Void) {
+        guard let request = personSegmentationRequest else {
+            completion(nil)
+            return
+        }
+        
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                try handler.perform([request])
+                
+                guard let results = request.results,
+                      let observation = results.first as? VNPixelBufferObservation else {
+                    completion(nil)
+                    return
+                }
+                
+                let maskPixelBuffer = observation.pixelBuffer
+                let maskImage = CIImage(cvPixelBuffer: maskPixelBuffer)
+                
+                DispatchQueue.main.async {
+                    print("Person mask generated: size \(maskImage.extent)")
+                }
+                
+                completion(maskImage)
+            } catch {
+                print("Person segmentation error: \(error)")
+                completion(nil)
+            }
+        }
+    }
+    
+    private func setFocusAndExposure(at point: CGPoint) {
+        guard let device = currentVideoInput?.device else { return }
+        
+        // Store the focus point for selective bokeh
+        lastFocusPoint = point
+        
+        do {
+            try device.lockForConfiguration()
+            
+            // Set focus point if supported
+            if device.isFocusPointOfInterestSupported && device.isFocusModeSupported(.autoFocus) {
+                device.focusPointOfInterest = point
+                device.focusMode = .autoFocus
+                print("Focus set at point: \(point)")
+            }
+            
+            // Set exposure point if supported
+            if device.isExposurePointOfInterestSupported && device.isExposureModeSupported(.autoExpose) {
+                device.exposurePointOfInterest = point
+                device.exposureMode = .autoExpose
+                print("Exposure set at point: \(point)")
+            }
+            
+            device.unlockForConfiguration()
+        } catch {
+            print("Error setting focus/exposure: \(error)")
+        }
     }
     
     private func configureSession() {
@@ -213,7 +463,251 @@ class FilteredCameraViewController: UIViewController {
             return
         }
         
+        // Add photo output
+        photoOutput = AVCapturePhotoOutput()
+        if let photoOutput = photoOutput {
+            if session.canAddOutput(photoOutput) {
+                session.addOutput(photoOutput)
+                photoOutput.isHighResolutionCaptureEnabled = true
+            } else {
+                print("Couldn't add photo output to the session.")
+            }
+        }
+        
         session.commitConfiguration()
+    }
+    
+    func capturePhoto() {
+        guard let photoOutput = photoOutput else { return }
+        
+        let photoSettings = AVCapturePhotoSettings()
+        photoSettings.isHighResolutionPhotoEnabled = true
+        
+        // Capture the photo
+        photoOutput.capturePhoto(with: photoSettings, delegate: self)
+    }
+    
+    private func saveImageToPhotoLibrary(_ image: UIImage) {
+        // Check current authorization status
+        let status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+        
+        switch status {
+        case .notDetermined:
+            // Request permission
+            PHPhotoLibrary.requestAuthorization(for: .addOnly) { newStatus in
+                if newStatus == .authorized {
+                    self.performSave(image)
+                } else {
+                    print("Photo library access denied")
+                }
+            }
+        case .authorized, .limited:
+            self.performSave(image)
+        default:
+            print("Photo library access denied or restricted")
+        }
+    }
+    
+    private func performSave(_ image: UIImage) {
+        PHPhotoLibrary.shared().performChanges {
+            PHAssetChangeRequest.creationRequestForAsset(from: image)
+        } completionHandler: { success, error in
+            if success {
+                print("Photo saved to library")
+                DispatchQueue.main.async {
+                    // Navigate to photo library after saving
+                    self.capturePhotoCompletion?(image)
+                }
+            } else if let error = error {
+                print("Error saving photo: \(error)")
+            }
+        }
+    }
+    
+    private func generateLightLeak(for extent: CGRect) -> CIImage? {
+        // Generate random position for light leak
+        let positions = [
+            CGPoint(x: 0, y: 0),                               // Top-left corner
+            CGPoint(x: extent.width, y: 0),                    // Top-right corner
+            CGPoint(x: 0, y: extent.height),                   // Bottom-left corner
+            CGPoint(x: extent.width, y: extent.height),        // Bottom-right corner
+            CGPoint(x: extent.width * 0.5, y: 0),              // Top center
+            CGPoint(x: extent.width * 0.5, y: extent.height)   // Bottom center
+        ]
+        
+        // Pick a random position
+        let position = positions.randomElement() ?? positions[0]
+        
+        // Create radial gradient for light leak
+        let radialGradient = CIFilter.radialGradient()
+        radialGradient.center = position
+        radialGradient.radius0 = 0
+        radialGradient.radius1 = Float(max(extent.width, extent.height) * 0.7)
+        
+        // Create warm light leak colors
+        let colors = [
+            CIColor(red: 1.0, green: 0.8, blue: 0.3, alpha: 1.0),  // Warm yellow
+            CIColor(red: 1.0, green: 0.5, blue: 0.2, alpha: 1.0),  // Orange
+            CIColor(red: 1.0, green: 0.6, blue: 0.4, alpha: 1.0),  // Peachy
+            CIColor(red: 0.9, green: 0.4, blue: 0.3, alpha: 1.0),  // Red-orange
+            CIColor(red: 1.0, green: 0.9, blue: 0.5, alpha: 1.0)   // Pale yellow
+        ]
+        
+        let color = colors.randomElement() ?? colors[0]
+        radialGradient.color0 = color
+        radialGradient.color1 = CIColor(red: color.red, green: color.green, blue: color.blue, alpha: 0.0)
+        
+        guard let gradientImage = radialGradient.outputImage else { return nil }
+        
+        // Apply gaussian blur for softer edges
+        let blur = CIFilter.gaussianBlur()
+        blur.inputImage = gradientImage
+        blur.radius = 20
+        
+        return blur.outputImage?.cropped(to: extent)
+    }
+    
+    private func applyLightLeak(to inputImage: CIImage, intensity: Float) -> CIImage {
+        guard intensity > 0 else { 
+            cachedLightLeakImage = nil
+            return inputImage 
+        }
+        
+        // Regenerate light leak every 5 seconds for variety
+        let now = Date()
+        if cachedLightLeakImage == nil || now.timeIntervalSince(lastLightLeakGeneration) > 5.0 {
+            cachedLightLeakImage = generateLightLeak(for: inputImage.extent)
+            lastLightLeakGeneration = now
+        }
+        
+        guard let lightLeak = cachedLightLeakImage else { return inputImage }
+        
+        // Apply screen blend mode for natural light effect
+        let screenBlend = CIFilter.screenBlendMode()
+        screenBlend.inputImage = lightLeak
+        screenBlend.backgroundImage = inputImage
+        
+        guard let blendedImage = screenBlend.outputImage else { return inputImage }
+        
+        // Mix based on intensity
+        let mixer = CIFilter.dissolveTransition()
+        mixer.inputImage = inputImage
+        mixer.targetImage = blendedImage
+        mixer.time = intensity * 0.6  // Scale down intensity for subtlety
+        
+        return mixer.outputImage ?? inputImage
+    }
+    
+    private func createRadialMask(for extent: CGRect, centerPoint: CGPoint, radius: Float) -> CIImage? {
+        // Create a radial gradient for the mask
+        let gradientFilter = CIFilter.radialGradient()
+        
+        // Convert normalized point (0-1) to image coordinates
+        let centerX = extent.origin.x + extent.width * CGFloat(centerPoint.x)
+        let centerY = extent.origin.y + extent.height * (1.0 - CGFloat(centerPoint.y)) // Invert Y
+        
+        gradientFilter.center = CGPoint(x: centerX, y: centerY)
+        gradientFilter.radius0 = Float(min(extent.width, extent.height) * 0.15) * radius  // Focus area
+        gradientFilter.radius1 = Float(max(extent.width, extent.height) * 0.5) * radius   // Blur transition
+        
+        // White center (no blur), black edges (full blur)
+        gradientFilter.color0 = CIColor.white
+        gradientFilter.color1 = CIColor.black
+        
+        return gradientFilter.outputImage?.cropped(to: extent)
+    }
+    
+    private func applySelectiveBokeh(to inputImage: CIImage, intensity: Float, focusPoint: CGPoint) -> CIImage {
+        guard intensity > 0 else { return inputImage }
+        
+        // First create blurred version of entire image
+        let blurredImage: CIImage
+        if #available(iOS 11.0, *) {
+            let bokehBlur = CIFilter.bokehBlur()
+            bokehBlur.inputImage = inputImage
+            bokehBlur.radius = intensity * 35
+            bokehBlur.ringAmount = 0.7
+            bokehBlur.ringSize = 0.2
+            bokehBlur.softness = 1.0
+            blurredImage = bokehBlur.outputImage?.cropped(to: inputImage.extent) ?? inputImage
+        } else {
+            let gaussianBlur = CIFilter.gaussianBlur()
+            gaussianBlur.inputImage = inputImage
+            gaussianBlur.radius = intensity * 25
+            blurredImage = gaussianBlur.outputImage?.cropped(to: inputImage.extent) ?? inputImage
+        }
+        
+        // Use person mask if available
+        if let personMask = lastPersonMask {
+            // Scale mask to match input image size
+            let scaleX = inputImage.extent.width / personMask.extent.width
+            let scaleY = inputImage.extent.height / personMask.extent.height
+            let scaledMask = personMask.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
+            
+            // Person mask: white = person, black = background
+            // For CIBlendWithMask: white shows inputImage (sharp), black shows backgroundImage (blurred)
+            // So we use the mask as-is (person = white = sharp)
+            
+            let blendFilter = CIFilter.blendWithMask()
+            blendFilter.inputImage = inputImage  // Sharp original
+            blendFilter.backgroundImage = blurredImage  // Blurred background
+            blendFilter.maskImage = scaledMask  // Person mask
+            
+            return blendFilter.outputImage?.cropped(to: inputImage.extent) ?? inputImage
+        } else {
+            // Fallback: use radial gradient for focus point
+            if let radialMask = createRadialMask(for: inputImage.extent, centerPoint: focusPoint, radius: 1.5) {
+                
+                // Invert the radial mask (center should be white/sharp)
+                let invertFilter = CIFilter.colorInvert()
+                invertFilter.inputImage = radialMask
+                let invertedMask = invertFilter.outputImage ?? radialMask
+                
+                let blendFilter = CIFilter.blendWithMask()
+                blendFilter.inputImage = inputImage  // Sharp original
+                blendFilter.backgroundImage = blurredImage  // Blurred background
+                blendFilter.maskImage = invertedMask  // Inverted radial mask
+                
+                return blendFilter.outputImage?.cropped(to: inputImage.extent) ?? inputImage
+            }
+        }
+        
+        return inputImage
+    }
+    
+    private func applyBokehBlur(to inputImage: CIImage, intensity: Float) -> CIImage {
+        guard intensity > 0 else { return inputImage }
+        
+        // Check if selective bokeh is enabled
+        if isSelectiveBokeh {
+            return applySelectiveBokeh(to: inputImage, intensity: intensity, focusPoint: lastFocusPoint)
+        }
+        
+        // Full frame bokeh blur
+        if #available(iOS 11.0, *) {
+            let bokehBlur = CIFilter.bokehBlur()
+            bokehBlur.inputImage = inputImage
+            bokehBlur.radius = intensity * 30  // Radius 0-30
+            bokehBlur.ringAmount = 0.5  // Ring emphasis
+            bokehBlur.ringSize = 0.1   // Ring size
+            bokehBlur.softness = 0.7    // Edge softness
+            
+            if let outputImage = bokehBlur.outputImage {
+                // Ensure the output maintains the original extent
+                return outputImage.cropped(to: inputImage.extent)
+            }
+        }
+        
+        // Fallback to Gaussian blur for older iOS versions
+        let gaussianBlur = CIFilter.gaussianBlur()
+        gaussianBlur.inputImage = inputImage
+        gaussianBlur.radius = intensity * 15
+        
+        if let outputImage = gaussianBlur.outputImage {
+            return outputImage.cropped(to: inputImage.extent)
+        }
+        
+        return inputImage
     }
     
     private func applyGrain(to inputImage: CIImage, intensity: Float) -> CIImage {
@@ -441,9 +935,40 @@ class FilteredCameraViewController: UIViewController {
     }
 }
 
+extension FilteredCameraViewController: AVCapturePhotoCaptureDelegate {
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        guard error == nil else {
+            print("Error capturing photo: \(error!)")
+            return
+        }
+        
+        // Use the last processed image with filters applied
+        if let processedImage = lastProcessedImage,
+           let cgImage = ciContext.createCGImage(processedImage, from: processedImage.extent) {
+            let uiImage = UIImage(cgImage: cgImage)
+            
+            // Save to photo library
+            saveImageToPhotoLibrary(uiImage)
+        } else if let data = photo.fileDataRepresentation(),
+                  let image = UIImage(data: data) {
+            // Fallback: save original photo if no processed image
+            saveImageToPhotoLibrary(image)
+        }
+    }
+}
+
 extension FilteredCameraViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        
+        // Generate person mask for selective bokeh (iOS 15+)
+        if #available(iOS 15.0, *), isSelectiveBokeh && bokehIntensity > 0 {
+            generatePersonMask(from: pixelBuffer) { [weak self] mask in
+                if let mask = mask {
+                    self?.lastPersonMask = mask
+                }
+            }
+        }
         
         var ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         
@@ -467,8 +992,14 @@ extension FilteredCameraViewController: AVCaptureVideoDataOutputSampleBufferDele
         // Apply filter
         let filteredImage = applyFilter(to: ciImage)
         
-        // Apply grain effect after filter
-        let grainedImage = applyGrain(to: filteredImage, intensity: grainIntensity)
+        // Apply bokeh blur effect
+        let bokehImage = applyBokehBlur(to: filteredImage, intensity: bokehIntensity)
+        
+        // Apply light leak effect
+        let lightLeakedImage = applyLightLeak(to: bokehImage, intensity: lightLeakIntensity)
+        
+        // Apply grain effect after light leak
+        let grainedImage = applyGrain(to: lightLeakedImage, intensity: grainIntensity)
         
         // Ensure the filtered image maintains the original extent
         // This prevents filters like bloom from changing the preview size
@@ -479,6 +1010,9 @@ extension FilteredCameraViewController: AVCaptureVideoDataOutputSampleBufferDele
         } else {
             finalImage = grainedImage
         }
+        
+        // Store the processed image for photo capture
+        lastProcessedImage = finalImage
         
         if let cgImage = ciContext.createCGImage(finalImage, from: originalExtent) {
             DispatchQueue.main.async {
