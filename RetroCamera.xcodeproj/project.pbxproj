@@ -404,7 +404,7 @@
 				INFOPLIST_KEY_NSCameraUsageDescription = "RetroCamera needs access to your camera to capture photos with vintage film effects.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "RetroCamera needs permission to save your captured photos to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "RetroCamera needs access to your photo library to save and manage your photos.";
-				INFOPLIST_KEY_UIAppFonts = "DSEG7Classic-Bold.ttf";
+				"INFOPLIST_KEY_UIAppFonts[sdk=*]" = "DSEG7Classic-Bold.ttf";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -436,7 +436,7 @@
 				INFOPLIST_KEY_NSCameraUsageDescription = "RetroCamera needs access to your camera to capture photos with vintage film effects.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "RetroCamera needs permission to save your captured photos to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "RetroCamera needs access to your photo library to save and manage your photos.";
-				INFOPLIST_KEY_UIAppFonts = "DSEG7Classic-Bold.ttf";
+				"INFOPLIST_KEY_UIAppFonts[sdk=*]" = "DSEG7Classic-Bold.ttf";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
