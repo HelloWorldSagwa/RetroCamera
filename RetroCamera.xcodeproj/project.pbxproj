@@ -400,6 +400,7 @@
 				DEVELOPMENT_TEAM = R538948932;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "옛날카메라";
 				INFOPLIST_KEY_NSCameraUsageDescription = "RetroCamera needs access to your camera to capture photos with vintage film effects.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "RetroCamera needs permission to save your captured photos to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "RetroCamera needs access to your photo library to save and manage your photos.";
@@ -430,6 +431,7 @@
 				DEVELOPMENT_TEAM = R538948932;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "옛날카메라";
 				INFOPLIST_KEY_NSCameraUsageDescription = "RetroCamera needs access to your camera to capture photos with vintage film effects.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "RetroCamera needs permission to save your captured photos to your photo library.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "RetroCamera needs access to your photo library to save and manage your photos.";

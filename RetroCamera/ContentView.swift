@@ -19,6 +19,7 @@ struct ContentView: View {
     @State private var showingImagePicker = false
     @State private var capturedImage: UIImage?
     @State private var shouldCapturePhoto = false
+    @State private var showDateStamp: Bool = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -36,7 +37,8 @@ struct ContentView: View {
                                      bokehIntensity: $bokehIntensity,
                                      isSelectiveBokeh: $isSelectiveBokeh,
                                      shouldCapturePhoto: $shouldCapturePhoto,
-                                     capturedImage: $capturedImage)
+                                     capturedImage: $capturedImage,
+                                     showDateStamp: $showDateStamp)
                         .frame(width: geometry.size.width, height: cameraHeight)
                         .clipped()
                     
@@ -211,9 +213,17 @@ struct ContentView: View {
                             
                             Spacer()
                             
-                            // Empty space for balance
-                            Color.clear
-                                .frame(width: 44, height: 44)
+                            // Date stamp toggle
+                            Button(action: {
+                                showDateStamp.toggle()
+                            }) {
+                                Image(systemName: showDateStamp ? "calendar.badge.clock" : "calendar")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(showDateStamp ? .orange : .white)
+                                    .frame(width: 44, height: 44)
+                                    .background(Color.black.opacity(0.3))
+                                    .clipShape(Circle())
+                            }
                         }
                         .padding(.horizontal, 40)
                         .padding(.bottom, 20)

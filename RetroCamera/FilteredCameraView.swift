@@ -15,6 +15,7 @@ struct FilteredCameraView: UIViewControllerRepresentable {
     @Binding var isSelectiveBokeh: Bool
     @Binding var shouldCapturePhoto: Bool
     @Binding var capturedImage: UIImage?
+    @Binding var showDateStamp: Bool
     
     func makeUIViewController(context: Context) -> FilteredCameraViewController {
         let controller = FilteredCameraViewController()
@@ -25,6 +26,7 @@ struct FilteredCameraView: UIViewControllerRepresentable {
         controller.isManualFocus = isManualFocus
         controller.bokehIntensity = Float(bokehIntensity)
         controller.isSelectiveBokeh = isSelectiveBokeh
+        controller.showDateStamp = showDateStamp
         controller.capturePhotoCompletion = { image in
             capturedImage = image
             shouldCapturePhoto = false
@@ -40,6 +42,7 @@ struct FilteredCameraView: UIViewControllerRepresentable {
         uiViewController.isManualFocus = isManualFocus
         uiViewController.bokehIntensity = Float(bokehIntensity)
         uiViewController.isSelectiveBokeh = isSelectiveBokeh
+        uiViewController.showDateStamp = showDateStamp
         
         if shouldCapturePhoto {
             uiViewController.capturePhoto()
@@ -123,6 +126,12 @@ class FilteredCameraViewController: UIViewController {
     var isSelectiveBokeh: Bool = true {
         didSet {
             print("Selective bokeh: \(isSelectiveBokeh)")
+        }
+    }
+    
+    var showDateStamp: Bool = false {
+        didSet {
+            print("Date stamp: \(showDateStamp)")
         }
     }
     
@@ -397,6 +406,51 @@ class FilteredCameraViewController: UIViewController {
         } catch {
             print("Error setting focus/exposure: \(error)")
         }
+    }
+    
+    private func applyDateStamp(to inputImage: CIImage) -> CIImage {
+        // Create date string in vintage format
+        let formatter = DateFormatter()
+        formatter.dateFormat = "''yy MM dd"  // Format: '95 12 25
+        let dateString = formatter.string(from: Date())
+        
+        // Create the text image
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont(name: "Courier-Bold", size: 28) ?? UIFont.monospacedDigitSystemFont(ofSize: 28, weight: .bold),
+            .foregroundColor: UIColor(red: 1.0, green: 0.4, blue: 0.0, alpha: 0.9) // Orange color
+        ]
+        
+        let textSize = dateString.size(withAttributes: attributes)
+        let renderer = UIGraphicsImageRenderer(size: textSize)
+        
+        let textImage = renderer.image { context in
+            // Add shadow for depth
+            let shadow = NSShadow()
+            shadow.shadowColor = UIColor.black.withAlphaComponent(0.5)
+            shadow.shadowOffset = CGSize(width: 1, height: 1)
+            shadow.shadowBlurRadius = 2
+            
+            var shadowAttributes = attributes
+            shadowAttributes[.shadow] = shadow
+            
+            dateString.draw(at: .zero, withAttributes: shadowAttributes)
+        }
+        
+        guard let textCIImage = CIImage(image: textImage) else {
+            return inputImage
+        }
+        
+        // Position the date stamp in bottom right corner
+        let imageExtent = inputImage.extent
+        let xPosition = imageExtent.width - textSize.width - 20
+        let yPosition: CGFloat = 20
+        
+        // Transform to position the text
+        let transform = CGAffineTransform(translationX: xPosition, y: yPosition)
+        let transformedText = textCIImage.transformed(by: transform)
+        
+        // Composite the text over the image
+        return transformedText.composited(over: inputImage)
     }
     
     private func configureSession() {
@@ -1001,14 +1055,17 @@ extension FilteredCameraViewController: AVCaptureVideoDataOutputSampleBufferDele
         // Apply grain effect after light leak
         let grainedImage = applyGrain(to: lightLeakedImage, intensity: grainIntensity)
         
+        // Apply date stamp if enabled
+        let stampedImage = showDateStamp ? applyDateStamp(to: grainedImage) : grainedImage
+        
         // Ensure the filtered image maintains the original extent
         // This prevents filters like bloom from changing the preview size
         let finalImage: CIImage
-        if grainedImage.extent != originalExtent {
+        if stampedImage.extent != originalExtent {
             // Crop back to original size if the filter changed the extent
-            finalImage = grainedImage.cropped(to: originalExtent)
+            finalImage = stampedImage.cropped(to: originalExtent)
         } else {
-            finalImage = grainedImage
+            finalImage = stampedImage
         }
         
         // Store the processed image for photo capture
