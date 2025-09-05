@@ -414,17 +414,31 @@ class FilteredCameraViewController: UIViewController {
         formatter.dateFormat = "''yy MM dd"  // Format: '95 12 25
         let dateString = formatter.string(from: Date())
         
-        // Create the text image with 7-segment LCD style
+        // Try to load DSEG 7-segment font
         let font: UIFont
-        // Try different font name variations
-        if let dsegFont = UIFont(name: "DSEG7Classic-Bold", size: 20) {
+        
+        // Check for DSEG font family
+        var dsegFontName: String? = nil
+        for family in UIFont.familyNames {
+            if family.uppercased().contains("DSEG") {
+                // Get first font in the DSEG family
+                let fonts = UIFont.fontNames(forFamilyName: family)
+                if let firstName = fonts.first {
+                    dsegFontName = firstName
+                    break
+                }
+            }
+        }
+        
+        // Try to load the found DSEG font or use specific names
+        if let fontName = dsegFontName, let dsegFont = UIFont(name: fontName, size: 20) {
+            font = dsegFont
+        } else if let dsegFont = UIFont(name: "DSEG7Classic-Bold", size: 20) {
             font = dsegFont
         } else if let dsegFont = UIFont(name: "DSEG7 Classic-Bold", size: 20) {
             font = dsegFont
-        } else if let dsegFont = UIFont(name: "DSEG7 Classic", size: 20) {
-            font = dsegFont
         } else {
-            // Fallback to system monospaced digital font
+            // Fallback to system monospaced font
             font = UIFont.monospacedDigitSystemFont(ofSize: 20, weight: .medium)
         }
         
