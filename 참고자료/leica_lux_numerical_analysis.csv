@@ -1,0 +1,45 @@
+Filter/Effect,Original iPhone Value,Leica LUX Processed Value,Numerical Difference,Impact on Image Quality
+Leica Standard (Color Temperature),6500,6200,-300,"Warmer, more natural skin tones"
+Leica Vivid (Color Temperature),6500,6800,300,"Cooler, more vivid blues/whites"
+Leica Natural (Color Temperature),6500,6300,-200,"Slightly warmer, film-like"
+Leica Classic (Color Temperature),6500,5800,-700,"Significantly warmer, vintage feel"
+Leica Contemporary (Color Temperature),6500,6400,-100,"Neutral to cool, modern look"
+Leica Eternal (Color Temperature),6500,6600,100,"Cool, contemporary aesthetic"
+Leica Standard (RGB Shift),"R:128, G:128, B:128","R:118, G:125, B:132","R:-10, G:-3, B:+4","Balanced, natural look"
+Leica Vivid (RGB Shift),"R:128, G:128, B:128","R:138, G:132, B:125","R:+10, G:+4, B:-3","Enhanced vibrancy, blue sky emphasis"
+Leica Natural (RGB Shift),"R:128, G:128, B:128","R:122, G:128, B:130","R:-6, G:0, B:+2","Muted, editorial style"
+Leica BW Natural (Luminance),50% luminance,45% luminance,-5% luminance,Classic B&W with good tonal range
+Leica BW High Contrast (Luminance),50% luminance,35% luminance,-15% luminance,"High contrast B&W, dramatic shadows"
+Leica Standard (Contrast),100,95,-5,Slightly softer shadows
+Leica Vivid (Contrast),100,115,15,"Punchy, commercial look"
+Leica Natural (Contrast),100,85,-15,"Flat, editable foundation"
+Leica Classic (Contrast),100,110,10,Film-like contrast curve
+Leica Contemporary (Contrast),100,105,5,"Modern, crisp appearance"
+Leica Eternal (Contrast),100,125,25,"Bold, stylized look"
+Greg Williams Look (Contrast),100,140,40,"Cinematic, newspaper-like"
+Leica Standard (Saturation),100,98,-2,Natural color reproduction
+Leica Vivid (Saturation),100,108,8,Enhanced but not artificial
+Leica Natural (Saturation),100,88,-12,"Desaturated, moody"
+Leica Classic (Saturation),100,105,5,Enhanced warmth in reds/oranges
+Leica Contemporary (Saturation),100,102,2,"Clean, accurate colors"
+Leica Standard (Gamma),2.2,2.1,-0.1,Slightly lifted shadows
+Leica Vivid (Gamma),2.2,2.3,0.1,Increased contrast in midtones
+Leica Natural (Gamma),2.2,2.0,-0.2,Flatter tone curve
+Leica Classic (Gamma),2.2,2.4,0.2,Film-like highlight rolloff
+Leica Contemporary (Gamma),2.2,2.2,0.0,Digital-optimized curve
+Leica Standard (Shadow/Highlight),0.0,+0.3/-0.2,+0.3/-0.2 EV,Preserved detail in extremes
+Leica Vivid (Shadow/Highlight),0.0,+0.1/-0.3,+0.1/-0.3 EV,Protected highlights
+Leica Natural (Shadow/Highlight),0.0,+0.2/-0.1,+0.2/-0.1 EV,Gentle tone mapping
+Leica Classic (Shadow/Highlight),0.0,+0.4/-0.3,+0.4/-0.3 EV,Strong film emulation
+Leica Contemporary (Shadow/Highlight),0.0,+0.2/-0.2,+0.2/-0.2 EV,Balanced exposure recovery
+Greg Williams Look (Film Grain),0,25,25,Authentic film texture
+Leica Classic (Film Grain),0,15,15,Subtle analog feel
+Leica Eternal (Film Grain),0,20,20,Stylized grain pattern
+Summilux-M 28mm (Vignetting),2,12,+10%,Natural lens character
+Summilux-M 35mm (Vignetting),2,18,+16%,Classic 35mm look
+Noctilux-M 50mm (Vignetting),2,25,+23%,Dramatic focus draw
+APO-Telyt-M 135mm (Vignetting),2,8,+6%,Subtle telephoto effect
+Summilux-M 28mm (Bokeh Radius),15,28,+13px,Enhanced depth separation
+Summilux-M 35mm (Bokeh Radius),15,35,+20px,Smooth background transition
+Noctilux-M 50mm (Bokeh Radius),15,45,+30px,Distinctive swirly bokeh
+APO-Telyt-M 135mm (Bokeh Radius),15,22,+7px,Clean telephoto blur

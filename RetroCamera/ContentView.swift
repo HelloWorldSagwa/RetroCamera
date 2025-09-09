@@ -85,6 +85,15 @@ struct ContentView: View {
                                         case .agfaVista:
                                             grainIntensity = 0.20
                                             lightLeakIntensity = 0.30
+                                        case .leicaM3Classic:
+                                            grainIntensity = 0.10
+                                            lightLeakIntensity = 0.18
+                                        case .leicaM10Warm:
+                                            grainIntensity = 0.05
+                                            lightLeakIntensity = 0.12
+                                        case .leicaQ2Reporter:
+                                            grainIntensity = 0.15
+                                            lightLeakIntensity = 0.05
                                         }
                                         print("Selected filter: \(filter.rawValue), grain: \(grainIntensity)")
                                     }) {

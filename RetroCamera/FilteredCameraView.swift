@@ -63,6 +63,9 @@ enum FilmFilter: String, CaseIterable {
     case kodakVision = "Kodak Vision3"
     case ilfordHP5 = "Ilford HP5"
     case agfaVista = "Agfa Vista"
+    case leicaM3Classic = "Leica M3 Classic"
+    case leicaM10Warm = "Leica M10 Warm"
+    case leicaQ2Reporter = "Leica Q2 Reporter"
 }
 
 class FilteredCameraViewController: UIViewController {
@@ -1012,6 +1015,129 @@ class FilteredCameraViewController: UIViewController {
             vibrance.amount = 0.3
             
             return vibrance.outputImage ?? inputImage
+            
+        case .leicaM3Classic:
+            // Leica M3 Classic - vintage analog aesthetic with high contrast and warm tones
+            // Based on the classic Leica look with Kodachrome-like characteristics
+            let colorControls = CIFilter.colorControls()
+            colorControls.inputImage = inputImage
+            colorControls.brightness = 0.03
+            colorControls.contrast = 1.22  // High contrast for classic look
+            colorControls.saturation = 0.85  // Slightly desaturated for vintage feel
+            
+            // Warm temperature shift characteristic of Leica
+            let temperatureAndTint = CIFilter.temperatureAndTint()
+            temperatureAndTint.inputImage = colorControls.outputImage
+            temperatureAndTint.neutral = CIVector(x: 6500, y: 0)
+            temperatureAndTint.targetNeutral = CIVector(x: 5200, y: 3)  // Warm shift
+            
+            // Enhance reds and yellows using color matrix
+            let colorMatrix = CIFilter.colorMatrix()
+            colorMatrix.inputImage = temperatureAndTint.outputImage
+            colorMatrix.rVector = CIVector(x: 1.12, y: 0, z: 0, w: 0)      // Enhanced red
+            colorMatrix.gVector = CIVector(x: 0, y: 1.05, z: 0, w: 0)      // Slight green boost
+            colorMatrix.bVector = CIVector(x: 0, y: 0, z: 0.92, w: 0)      // Reduced blue
+            colorMatrix.aVector = CIVector(x: 0, y: 0, z: 0, w: 1)
+            colorMatrix.biasVector = CIVector(x: 0.01, y: 0, z: -0.02, w: 0)  // Slight red bias
+            
+            // Add subtle sepia tone for vintage feel
+            let sepiaTone = CIFilter.sepiaTone()
+            sepiaTone.inputImage = colorMatrix.outputImage
+            sepiaTone.intensity = 0.08
+            
+            // Characteristic Leica vignette
+            let vignette = CIFilter.vignette()
+            vignette.inputImage = sepiaTone.outputImage
+            vignette.intensity = 0.4
+            vignette.radius = 1.6
+            
+            return vignette.outputImage ?? inputImage
+            
+        case .leicaM10Warm:
+            // Leica M10 Contemporary - modern warm aesthetic with natural colors
+            // Emphasizes skin tones and natural rendering
+            let colorControls = CIFilter.colorControls()
+            colorControls.inputImage = inputImage
+            colorControls.brightness = 0.05
+            colorControls.contrast = 1.15  // Moderate contrast
+            colorControls.saturation = 1.08  // Slightly enhanced saturation
+            
+            // Signature Leica warm white balance
+            let temperatureAndTint = CIFilter.temperatureAndTint()
+            temperatureAndTint.inputImage = colorControls.outputImage
+            temperatureAndTint.neutral = CIVector(x: 6500, y: 0)
+            temperatureAndTint.targetNeutral = CIVector(x: 5600, y: 5)  // Warm with slight green
+            
+            // Enhance vibrance for natural look
+            let vibrance = CIFilter.vibrance()
+            vibrance.inputImage = temperatureAndTint.outputImage
+            vibrance.amount = 0.4  // Enhance colors while preserving skin tones
+            
+            // Color matrix for signature Leica rendering
+            let colorMatrix = CIFilter.colorMatrix()
+            colorMatrix.inputImage = vibrance.outputImage
+            colorMatrix.rVector = CIVector(x: 1.08, y: 0, z: 0, w: 0)      // Enhanced red
+            colorMatrix.gVector = CIVector(x: 0, y: 1.02, z: 0, w: 0)      // Neutral green
+            colorMatrix.bVector = CIVector(x: 0, y: 0, z: 0.95, w: 0)      // Slightly reduced blue
+            colorMatrix.aVector = CIVector(x: 0, y: 0, z: 0, w: 1)
+            colorMatrix.biasVector = CIVector(x: 0.02, y: 0.01, z: 0, w: 0)  // Warm bias
+            
+            // Highlights and shadows adjustment for micro-contrast
+            let highlightShadowAdjust = CIFilter.highlightShadowAdjust()
+            highlightShadowAdjust.inputImage = colorMatrix.outputImage
+            highlightShadowAdjust.highlightAmount = 0.8
+            highlightShadowAdjust.shadowAmount = 0.3
+            
+            // Subtle vignette for depth
+            let vignette = CIFilter.vignette()
+            vignette.inputImage = highlightShadowAdjust.outputImage
+            vignette.intensity = 0.25
+            vignette.radius = 2.0
+            
+            return vignette.outputImage ?? inputImage
+            
+        case .leicaQ2Reporter:
+            // Leica Q2 Reporter - Documentary/street photography aesthetic
+            // High contrast, rich blacks, journalistic feel
+            let colorControls = CIFilter.colorControls()
+            colorControls.inputImage = inputImage
+            colorControls.brightness = -0.02
+            colorControls.contrast = 1.28  // High contrast for documentary feel
+            colorControls.saturation = 0.92  // Slightly desaturated for reportage look
+            
+            // Neutral to slightly warm temperature
+            let temperatureAndTint = CIFilter.temperatureAndTint()
+            temperatureAndTint.inputImage = colorControls.outputImage
+            temperatureAndTint.neutral = CIVector(x: 6500, y: 0)
+            temperatureAndTint.targetNeutral = CIVector(x: 5900, y: 2)  // Subtle warmth
+            
+            // Color matrix for documentary aesthetic
+            let colorMatrix = CIFilter.colorMatrix()
+            colorMatrix.inputImage = temperatureAndTint.outputImage
+            colorMatrix.rVector = CIVector(x: 1.05, y: 0, z: 0, w: 0)
+            colorMatrix.gVector = CIVector(x: 0, y: 1.0, z: 0, w: 0)
+            colorMatrix.bVector = CIVector(x: 0, y: 0, z: 0.98, w: 0)
+            colorMatrix.aVector = CIVector(x: 0, y: 0, z: 0, w: 1)
+            colorMatrix.biasVector = CIVector(x: 0, y: 0, z: 0, w: 0)
+            
+            // Enhance micro-contrast for sharp documentary look
+            let sharpenLuminance = CIFilter.sharpenLuminance()
+            sharpenLuminance.inputImage = colorMatrix.outputImage
+            sharpenLuminance.sharpness = 0.3
+            sharpenLuminance.radius = 1.0
+            
+            // Deep shadows for dramatic effect
+            let exposure = CIFilter.exposureAdjust()
+            exposure.inputImage = sharpenLuminance.outputImage
+            exposure.ev = -0.15  // Darken slightly for mood
+            
+            // Strong vignette for focus
+            let vignette = CIFilter.vignette()
+            vignette.inputImage = exposure.outputImage
+            vignette.intensity = 0.5
+            vignette.radius = 1.4
+            
+            return vignette.outputImage ?? inputImage
         }
     }
 }

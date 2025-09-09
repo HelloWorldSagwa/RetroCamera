@@ -29,9 +29,22 @@
 		B1292FC22E642BD9005C4D1C /* RetroCameraUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RetroCameraUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B129317C2E6BA25B005C4D1C /* Exceptions for "RetroCamera" folder in "RetroCamera" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B1292FA82E642BD8005C4D1C /* RetroCamera */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		B1292FAB2E642BD8005C4D1C /* RetroCamera */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B129317C2E6BA25B005C4D1C /* Exceptions for "RetroCamera" folder in "RetroCamera" target */,
+			);
 			path = RetroCamera;
 			sourceTree = "<group>";
 		};
@@ -400,6 +413,7 @@
 				DEVELOPMENT_TEAM = R538948932;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RetroCamera/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "옛날카메라";
 				INFOPLIST_KEY_NSCameraUsageDescription = "RetroCamera needs access to your camera to capture photos with vintage film effects.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "RetroCamera needs permission to save your captured photos to your photo library.";
@@ -432,6 +446,7 @@
 				DEVELOPMENT_TEAM = R538948932;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RetroCamera/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "옛날카메라";
 				INFOPLIST_KEY_NSCameraUsageDescription = "RetroCamera needs access to your camera to capture photos with vintage film effects.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "RetroCamera needs permission to save your captured photos to your photo library.";
