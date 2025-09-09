@@ -9,7 +9,7 @@ import SwiftUI
 import PhotosUI
 
 struct ContentView: View {
-    @State private var selectedFilter: FilmFilter = .none
+    @State private var selectedFilter: FilmFilter = .leicaStandard
     @State private var grainIntensity: Double = 0.2
     @State private var lightLeakIntensity: Double = 0.0
     @State private var focusPosition: Double = 0.5
@@ -50,50 +50,54 @@ struct ContentView: View {
                                 ForEach(FilmFilter.allCases, id: \.self) { filter in
                                     Button(action: {
                                         selectedFilter = filter
-                                        // Set default grain for each filter
+                                        // Set default grain for each filter based on Leica LUX data
                                         switch filter {
-                                        case .none:
+                                        // Leica LUX Core Looks
+                                        case .leicaStandard:
                                             grainIntensity = 0.0
                                             lightLeakIntensity = 0.0
-                                        case .portra400:
-                                            grainIntensity = 0.12
-                                            lightLeakIntensity = 0.15
-                                        case .velvia50:
-                                            grainIntensity = 0.08
-                                            lightLeakIntensity = 0.10
-                                        case .tri400:
-                                            grainIntensity = 0.25
+                                        case .leicaVivid:
+                                            grainIntensity = 0.0
                                             lightLeakIntensity = 0.05
-                                        case .gold200:
-                                            grainIntensity = 0.10
-                                            lightLeakIntensity = 0.20
-                                        case .cinestill800T:
-                                            grainIntensity = 0.30
-                                            lightLeakIntensity = 0.35
-                                        case .ektachrome:
-                                            grainIntensity = 0.06
-                                            lightLeakIntensity = 0.12
-                                        case .fujiSuperia:
-                                            grainIntensity = 0.15
-                                            lightLeakIntensity = 0.25
-                                        case .kodakVision:
-                                            grainIntensity = 0.18
-                                            lightLeakIntensity = 0.08
-                                        case .ilfordHP5:
-                                            grainIntensity = 0.35
+                                        case .leicaNatural:
+                                            grainIntensity = 0.0
                                             lightLeakIntensity = 0.0
-                                        case .agfaVista:
-                                            grainIntensity = 0.20
-                                            lightLeakIntensity = 0.30
-                                        case .leicaM3Classic:
+                                        case .leicaClassic:
+                                            grainIntensity = 0.15  // CSV: Film Grain 15
+                                            lightLeakIntensity = 0.10
+                                        case .leicaContemporary:
+                                            grainIntensity = 0.0
+                                            lightLeakIntensity = 0.0
+                                        case .leicaEternal:
+                                            grainIntensity = 0.20  // CSV: Film Grain 20
+                                            lightLeakIntensity = 0.08
+                                        
+                                        // Black & White
+                                        case .leicaBWNatural:
                                             grainIntensity = 0.10
-                                            lightLeakIntensity = 0.18
-                                        case .leicaM10Warm:
-                                            grainIntensity = 0.05
-                                            lightLeakIntensity = 0.12
-                                        case .leicaQ2Reporter:
+                                            lightLeakIntensity = 0.0
+                                        case .leicaBWHighContrast:
                                             grainIntensity = 0.15
-                                            lightLeakIntensity = 0.05
+                                            lightLeakIntensity = 0.0
+                                        
+                                        // Artist Look
+                                        case .gregWilliams:
+                                            grainIntensity = 0.25  // CSV: Film Grain 25
+                                            lightLeakIntensity = 0.0
+                                        
+                                        // Lens Simulations
+                                        case .summilux28mm:
+                                            grainIntensity = 0.0
+                                            lightLeakIntensity = 0.12  // Natural lens flare
+                                        case .summilux35mm:
+                                            grainIntensity = 0.0
+                                            lightLeakIntensity = 0.18  // Classic 35mm character
+                                        case .noctilux50mm:
+                                            grainIntensity = 0.0
+                                            lightLeakIntensity = 0.25  // Leica Glow effect
+                                        case .apoTelyt135mm:
+                                            grainIntensity = 0.0
+                                            lightLeakIntensity = 0.08  // Clean telephoto
                                         }
                                         print("Selected filter: \(filter.rawValue), grain: \(grainIntensity)")
                                     }) {
